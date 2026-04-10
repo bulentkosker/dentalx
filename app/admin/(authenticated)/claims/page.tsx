@@ -7,6 +7,7 @@ export default async function AdminClaimsPage() {
   const { data: claims } = await supabaseAdmin
     .from("claim_requests")
     .select("*, clinics(name, slug, city_slug)")
+    // document_urls and photo_urls included via *
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 

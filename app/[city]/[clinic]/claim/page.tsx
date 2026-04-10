@@ -2,24 +2,79 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+const MAX_FILES = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export default function ClaimPage() {
   const params = useParams<{ city: string; clinic: string }>();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const docsRef = useRef<HTMLInputElement>(null);
+  const photosRef = useRef<HTMLInputElement>(null);
+
+  async function uploadFiles(files: File[], folder: string): Promise<string[]> {
+    const timestamp = Date.now();
+    const basePath = `${params.city}/${params.clinic}/${timestamp}`;
+    const urls: string[] = [];
+
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`Файл "${file.name}" превышает 10 МБ`);
+      }
+      const path = `${basePath}/${folder}/${file.name}`;
+      setUploadProgress(`Загрузка: ${file.name}...`);
+      const { error: uploadError } = await supabase.storage
+        .from("claim-documents")
+        .upload(path, file);
+      if (uploadError) {
+        throw new Error(`Ошибка загрузки "${file.name}": ${uploadError.message}`);
+      }
+      urls.push(path);
+    }
+    return urls;
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    setUploadProgress("");
 
     const fd = new FormData(e.currentTarget);
+    const docFiles = docsRef.current?.files ? Array.from(docsRef.current.files) : [];
+    const photoFiles = photosRef.current?.files ? Array.from(photosRef.current.files) : [];
+
+    if (docFiles.length === 0) {
+      setError("Прикрепите хотя бы один документ");
+      setLoading(false);
+      return;
+    }
+    if (docFiles.length > MAX_FILES) {
+      setError(`Максимум ${MAX_FILES} документов`);
+      setLoading(false);
+      return;
+    }
+    if (photoFiles.length > MAX_FILES) {
+      setError(`Максимум ${MAX_FILES} фотографий`);
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Look up clinic_id by slug + city_slug
+      // Upload files to Storage
+      const documentUrls = await uploadFiles(docFiles, "docs");
+      const photoUrls = photoFiles.length > 0
+        ? await uploadFiles(photoFiles, "photos")
+        : [];
+
+      setUploadProgress("Сохранение заявки...");
+
+      // Look up clinic_id
       const { data: clinic, error: lookupError } = await supabase
         .from("clinics")
         .select("id")
@@ -31,13 +86,13 @@ export default function ClaimPage() {
         console.error("Clinic lookup failed:", lookupError.message);
       }
 
-      // Only send columns that exist in claim_requests table:
-      // id (auto), clinic_id, user_id, contact_name, contact_phone, contact_email, status, created_at (auto)
       const { error: insertError } = await supabase.from("claim_requests").insert({
         clinic_id: clinic?.id ?? null,
         contact_name: fd.get("name") as string,
         contact_phone: (fd.get("phone") as string) || null,
         contact_email: fd.get("email") as string,
+        document_urls: documentUrls,
+        photo_urls: photoUrls,
         status: "pending",
       });
 
@@ -53,6 +108,7 @@ export default function ClaimPage() {
       setError(msg);
     } finally {
       setLoading(false);
+      setUploadProgress("");
     }
   }
 
@@ -140,6 +196,43 @@ export default function ClaimPage() {
             placeholder="email@clinic.kz"
           />
         </div>
+
+        {/* File uploads */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Документы <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-slate-500 mb-2">
+            Учредительные документы, лицензия, доверенность. PDF или изображение, макс. 5 файлов, до 10 МБ каждый.
+          </p>
+          <input
+            ref={docsRef}
+            type="file"
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary file:font-medium file:cursor-pointer hover:file:bg-primary-100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Фотографии клиники
+          </label>
+          <p className="text-xs text-slate-500 mb-2">
+            Фото клиники, вывески, рабочего места. Макс. 5 файлов.
+          </p>
+          <input
+            ref={photosRef}
+            type="file"
+            multiple
+            accept=".jpg,.jpeg,.png,.webp"
+            className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-medium file:cursor-pointer hover:file:bg-slate-200"
+          />
+        </div>
+
+        {uploadProgress && (
+          <div className="text-sm text-primary">{uploadProgress}</div>
+        )}
+
         <button
           type="submit"
           disabled={loading}

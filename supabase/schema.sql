@@ -51,6 +51,21 @@ create table if not exists reviews (
   created_at timestamptz default now()
 );
 
+-- claim_requests: file upload columns
+alter table claim_requests add column if not exists document_urls text[];
+alter table claim_requests add column if not exists photo_urls text[];
+
+-- Storage bucket for claim documents (run in SQL editor)
+insert into storage.buckets (id, name, public)
+values ('claim-documents', 'claim-documents', false)
+on conflict (id) do nothing;
+
+-- Storage RLS: anon users can upload (INSERT) but not read
+create policy "anon can upload claim docs"
+  on storage.objects for insert
+  to anon
+  with check (bucket_id = 'claim-documents');
+
 -- RLS: public read on clinics, no public write
 alter table clinics enable row level security;
 

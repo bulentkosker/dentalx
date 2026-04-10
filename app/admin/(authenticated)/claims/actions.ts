@@ -42,6 +42,17 @@ export async function approveClaim(
   revalidatePath("/admin/claims");
 }
 
+export async function getSignedUrl(path: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.storage
+    .from("claim-documents")
+    .createSignedUrl(path, 60 * 10); // 10 min
+  if (error) {
+    console.error("Signed URL error:", error.message);
+    return null;
+  }
+  return data.signedUrl;
+}
+
 export async function rejectClaim(claimId: string) {
   const { error } = await supabaseAdmin
     .from("claim_requests")

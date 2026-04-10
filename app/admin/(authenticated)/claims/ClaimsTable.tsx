@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { approveClaim, rejectClaim } from "./actions";
+import { approveClaim, rejectClaim, getSignedUrl } from "./actions";
 
 type Claim = {
   id: string;
@@ -11,6 +11,8 @@ type Claim = {
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  document_urls: string[] | null;
+  photo_urls: string[] | null;
   created_at: string;
 };
 
@@ -46,6 +48,15 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
     }
   }
 
+  async function handleOpenFile(path: string) {
+    const url = await getSignedUrl(path);
+    if (url) {
+      window.open(url, "_blank");
+    } else {
+      setError("Не удалось получить ссылку на файл");
+    }
+  }
+
   return (
     <div>
       {error && (
@@ -63,6 +74,7 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
               <th className="px-4 py-3 font-medium">Имя</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Телефон</th>
+              <th className="px-4 py-3 font-medium">Файлы</th>
               <th className="px-4 py-3 font-medium">Действия</th>
             </tr>
           </thead>
@@ -81,6 +93,18 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
                 <td className="px-4 py-3 text-slate-900">{c.contact_name ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact_email ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact_phone ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <FileLinks
+                    label="Док"
+                    paths={c.document_urls}
+                    onOpen={handleOpenFile}
+                  />
+                  <FileLinks
+                    label="Фото"
+                    paths={c.photo_urls}
+                    onOpen={handleOpenFile}
+                  />
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button
@@ -102,6 +126,32 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function FileLinks({
+  label,
+  paths,
+  onOpen,
+}: {
+  label: string;
+  paths: string[] | null;
+  onOpen: (path: string) => void;
+}) {
+  if (!paths || paths.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mb-0.5">
+      {paths.map((p, i) => (
+        <button
+          key={p}
+          onClick={() => onOpen(p)}
+          className="text-primary hover:underline text-xs"
+          title={p.split("/").pop()}
+        >
+          {label} {i + 1}
+        </button>
+      ))}
     </div>
   );
 }

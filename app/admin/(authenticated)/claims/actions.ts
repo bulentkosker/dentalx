@@ -3,22 +3,42 @@
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-export async function approveClaim(claimId: string, clinicId: string | null) {
-  if (clinicId) {
-    await supabaseAdmin
+export async function approveClaim(
+  claimId: string,
+  clinicSlug: string | null,
+  citySlug: string | null,
+) {
+  // Update clinic as claimed
+  if (clinicSlug && citySlug) {
+    const { error: clinicError } = await supabaseAdmin
       .from("clinics")
       .update({
         is_claimed: true,
         claimed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", clinicId);
+      .eq("slug", clinicSlug)
+      .eq("city_slug", citySlug);
+
+    if (clinicError) {
+      console.error("Failed to update clinic:", clinicError.message);
+      throw new Error(`Ошибка обновления клиники: ${clinicError.message}`);
+    }
+  } else {
+    console.error("approveClaim: clinicSlug or citySlug is null", { claimId, clinicSlug, citySlug });
   }
+
+  // Update claim status
   const { error } = await supabaseAdmin
     .from("claim_requests")
     .update({ status: "approved" })
     .eq("id", claimId);
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    console.error("Failed to update claim_request:", error.message);
+    throw new Error(`Ошибка обновления заявки: ${error.message}`);
+  }
+
   revalidatePath("/admin/claims");
 }
 
@@ -27,6 +47,11 @@ export async function rejectClaim(claimId: string) {
     .from("claim_requests")
     .update({ status: "rejected" })
     .eq("id", claimId);
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    console.error("Failed to reject claim:", error.message);
+    throw new Error(`Ошибка отклонения заявки: ${error.message}`);
+  }
+
   revalidatePath("/admin/claims");
 }

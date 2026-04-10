@@ -16,12 +16,20 @@ export default function ClaimPage() {
     setError(null);
     setLoading(true);
 
+    // Look up clinic_id by slug + city_slug
+    const { data: clinic } = await supabase
+      .from("clinics")
+      .select("id")
+      .eq("slug", params.clinic)
+      .eq("city_slug", params.city)
+      .maybeSingle();
+
     const fd = new FormData(e.currentTarget);
     const { error: insertError } = await supabase.from("claim_requests").insert({
-      clinic_id: null,
+      clinic_id: clinic?.id ?? null,
       user_id: null,
       contact_name: fd.get("name") as string,
-      contact_phone: fd.get("phone") as string || null,
+      contact_phone: (fd.get("phone") as string) || null,
       contact_email: fd.get("email") as string,
       status: "pending",
     });

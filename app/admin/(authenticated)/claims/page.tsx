@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminClaimsPage() {
   const { data: claims } = await supabaseAdmin
     .from("claim_requests")
-    .select("*")
+    .select("*, clinics(name, slug, city_slug)")
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 

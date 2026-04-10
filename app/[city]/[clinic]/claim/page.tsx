@@ -16,6 +16,8 @@ export default function ClaimPage() {
     setError(null);
     setLoading(true);
 
+    const fd = new FormData(e.currentTarget);
+
     try {
       // Look up clinic_id by slug + city_slug
       const { data: clinic, error: lookupError } = await supabase
@@ -28,8 +30,6 @@ export default function ClaimPage() {
       if (lookupError) {
         console.error("Clinic lookup failed:", lookupError.message);
       }
-
-      const fd = new FormData(e.currentTarget);
 
       // Only send columns that exist in claim_requests table:
       // id (auto), clinic_id, user_id, contact_name, contact_phone, contact_email, status, created_at (auto)

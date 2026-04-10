@@ -194,14 +194,15 @@ export default function ClaimPage() {
             type="file"
             multiple
             accept=".pdf,.jpg,.jpeg,.png,.webp"
-            onChange={(e) => setDocuments(Array.from(e.target.files || []))}
+            onChange={(e) => setDocuments(prev => [...prev, ...Array.from(e.target.files || [])])}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary file:font-medium file:cursor-pointer hover:file:bg-primary-100"
           />
           {documents.length > 0 && (
             <div className="mt-2 space-y-1">
-              {documents.map((f) => (
-                <div key={f.name} className="text-xs text-slate-600">
-                  {f.name} ({(f.size / 1024).toFixed(0)} KB)
+              {documents.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                  <span>{f.name} ({(f.size / 1024).toFixed(0)} KB)</span>
+                  <button type="button" onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600">×</button>
                 </div>
               ))}
             </div>
@@ -220,14 +221,15 @@ export default function ClaimPage() {
             type="file"
             multiple
             accept=".jpg,.jpeg,.png,.webp"
-            onChange={(e) => setPhotos(Array.from(e.target.files || []))}
+            onChange={(e) => setPhotos(prev => [...prev, ...Array.from(e.target.files || [])])}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-medium file:cursor-pointer hover:file:bg-slate-200"
           />
           {photos.length > 0 && (
             <div className="mt-2 space-y-1">
-              {photos.map((f) => (
-                <div key={f.name} className="text-xs text-slate-600">
-                  {f.name} ({(f.size / 1024).toFixed(0)} KB)
+              {photos.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                  <span>{f.name} ({(f.size / 1024).toFixed(0)} KB)</span>
+                  <button type="button" onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600">×</button>
                 </div>
               ))}
             </div>

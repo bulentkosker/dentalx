@@ -15,6 +15,8 @@ export default function ClaimPage() {
   const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState<File[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
+  const documentsRef = useRef<File[]>([]);
+  const photosRef = useRef<File[]>([]);
   const docInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,15 +44,15 @@ export default function ClaimPage() {
 
     const fd = new FormData(e.currentTarget);
 
-    if (documents.length === 0) {
+    if (documentsRef.current.length === 0) {
       setError("Прикрепите хотя бы один документ");
       return;
     }
-    if (documents.length > MAX_FILES) {
+    if (documentsRef.current.length > MAX_FILES) {
       setError(`Максимум ${MAX_FILES} документов`);
       return;
     }
-    if (photos.length > MAX_FILES) {
+    if (photosRef.current.length > MAX_FILES) {
       setError(`Максимум ${MAX_FILES} фотографий`);
       return;
     }
@@ -59,8 +61,8 @@ export default function ClaimPage() {
 
     try {
       // Upload files to Storage
-      const docUrls = await uploadFiles(documents);
-      const photoUrls = photos.length > 0 ? await uploadFiles(photos) : [];
+      const docUrls = await uploadFiles(documentsRef.current);
+      const photoUrls = photosRef.current.length > 0 ? await uploadFiles(photosRef.current) : [];
 
       // Look up clinic_id
       const { data: clinic, error: lookupError } = await supabase
@@ -88,6 +90,8 @@ export default function ClaimPage() {
         console.error("Claim insert failed:", insertError.message);
         setError(insertError.message);
       } else {
+        documentsRef.current = [];
+        photosRef.current = [];
         setSubmitted(true);
       }
     } catch (err) {
@@ -198,7 +202,9 @@ export default function ClaimPage() {
             multiple
             accept=".pdf,.jpg,.jpeg,.png,.webp"
             onChange={(e) => {
-              setDocuments(prev => [...prev, ...Array.from(e.target.files || [])]);
+              const newFiles = Array.from(e.target.files || []);
+              documentsRef.current = [...documentsRef.current, ...newFiles];
+              setDocuments([...documentsRef.current]);
               if (docInputRef.current) docInputRef.current.value = "";
             }}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary file:font-medium file:cursor-pointer hover:file:bg-primary-100"
@@ -208,7 +214,7 @@ export default function ClaimPage() {
               {documents.map((f, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
                   <span>{f.name} ({(f.size / 1024).toFixed(0)} KB)</span>
-                  <button type="button" onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600">×</button>
+                  <button type="button" onClick={() => { documentsRef.current = documentsRef.current.filter((_, j) => j !== i); setDocuments([...documentsRef.current]); }} className="text-red-400 hover:text-red-600">×</button>
                 </div>
               ))}
             </div>
@@ -229,7 +235,9 @@ export default function ClaimPage() {
             multiple
             accept=".jpg,.jpeg,.png,.webp"
             onChange={(e) => {
-              setPhotos(prev => [...prev, ...Array.from(e.target.files || [])]);
+              const newFiles = Array.from(e.target.files || []);
+              photosRef.current = [...photosRef.current, ...newFiles];
+              setPhotos([...photosRef.current]);
               if (photoInputRef.current) photoInputRef.current.value = "";
             }}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-medium file:cursor-pointer hover:file:bg-slate-200"
@@ -239,7 +247,7 @@ export default function ClaimPage() {
               {photos.map((f, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
                   <span>{f.name} ({(f.size / 1024).toFixed(0)} KB)</span>
-                  <button type="button" onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600">×</button>
+                  <button type="button" onClick={() => { photosRef.current = photosRef.current.filter((_, j) => j !== i); setPhotos([...photosRef.current]); }} className="text-red-400 hover:text-red-600">×</button>
                 </div>
               ))}
             </div>

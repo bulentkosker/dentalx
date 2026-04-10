@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const MAX_FILES = 5;
@@ -15,6 +15,8 @@ export default function ClaimPage() {
   const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState<File[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   async function uploadFiles(files: File[]): Promise<string[]> {
     const urls: string[] = [];
@@ -191,10 +193,14 @@ export default function ClaimPage() {
             Учредительные документы, лицензия, доверенность. PDF или изображение, макс. 5 файлов, до 10 МБ каждый.
           </p>
           <input
+            ref={docInputRef}
             type="file"
             multiple
             accept=".pdf,.jpg,.jpeg,.png,.webp"
-            onChange={(e) => setDocuments(prev => [...prev, ...Array.from(e.target.files || [])])}
+            onChange={(e) => {
+              setDocuments(prev => [...prev, ...Array.from(e.target.files || [])]);
+              if (docInputRef.current) docInputRef.current.value = "";
+            }}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary file:font-medium file:cursor-pointer hover:file:bg-primary-100"
           />
           {documents.length > 0 && (
@@ -218,10 +224,14 @@ export default function ClaimPage() {
             Фото клиники, вывески, рабочего места. Макс. 5 файлов.
           </p>
           <input
+            ref={photoInputRef}
             type="file"
             multiple
             accept=".jpg,.jpeg,.png,.webp"
-            onChange={(e) => setPhotos(prev => [...prev, ...Array.from(e.target.files || [])])}
+            onChange={(e) => {
+              setPhotos(prev => [...prev, ...Array.from(e.target.files || [])]);
+              if (photoInputRef.current) photoInputRef.current.value = "";
+            }}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-medium file:cursor-pointer hover:file:bg-slate-200"
           />
           {photos.length > 0 && (

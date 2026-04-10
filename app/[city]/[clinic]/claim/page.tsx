@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const MAX_FILES = 5;
@@ -13,28 +13,23 @@ export default function ClaimPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState("");
-  const docsRef = useRef<HTMLInputElement>(null);
-  const photosRef = useRef<HTMLInputElement>(null);
+  const [documents, setDocuments] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
 
-  async function uploadFiles(files: File[], folder: string): Promise<string[]> {
-    const timestamp = Date.now();
-    const basePath = `${params.city}/${params.clinic}/${timestamp}`;
+  async function uploadFiles(files: File[]): Promise<string[]> {
     const urls: string[] = [];
-
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
         throw new Error(`Файл "${file.name}" превышает 10 МБ`);
       }
-      const path = `${basePath}/${folder}/${file.name}`;
-      setUploadProgress(`Загрузка: ${file.name}...`);
-      const { error: uploadError } = await supabase.storage
+      const path = `${params.city}/${params.clinic}/${Date.now()}_${file.name}`;
+      const { data, error } = await supabase.storage
         .from("claim-documents")
         .upload(path, file);
-      if (uploadError) {
-        throw new Error(`Ошибка загрузки "${file.name}": ${uploadError.message}`);
+      if (error) {
+        throw new Error(`Ошибка загрузки "${file.name}": ${error.message}`);
       }
-      urls.push(path);
+      if (data) urls.push(data.path);
     }
     return urls;
   }
@@ -42,37 +37,28 @@ export default function ClaimPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-    setUploadProgress("");
 
     const fd = new FormData(e.currentTarget);
-    const docFiles = docsRef.current?.files ? Array.from(docsRef.current.files) : [];
-    const photoFiles = photosRef.current?.files ? Array.from(photosRef.current.files) : [];
 
-    if (docFiles.length === 0) {
+    if (documents.length === 0) {
       setError("Прикрепите хотя бы один документ");
-      setLoading(false);
       return;
     }
-    if (docFiles.length > MAX_FILES) {
+    if (documents.length > MAX_FILES) {
       setError(`Максимум ${MAX_FILES} документов`);
-      setLoading(false);
       return;
     }
-    if (photoFiles.length > MAX_FILES) {
+    if (photos.length > MAX_FILES) {
       setError(`Максимум ${MAX_FILES} фотографий`);
-      setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     try {
       // Upload files to Storage
-      const documentUrls = await uploadFiles(docFiles, "docs");
-      const photoUrls = photoFiles.length > 0
-        ? await uploadFiles(photoFiles, "photos")
-        : [];
-
-      setUploadProgress("Сохранение заявки...");
+      const docUrls = await uploadFiles(documents);
+      const photoUrls = photos.length > 0 ? await uploadFiles(photos) : [];
 
       // Look up clinic_id
       const { data: clinic, error: lookupError } = await supabase
@@ -91,7 +77,7 @@ export default function ClaimPage() {
         contact_name: fd.get("name") as string,
         contact_phone: (fd.get("phone") as string) || null,
         contact_email: fd.get("email") as string,
-        document_urls: documentUrls,
+        document_urls: docUrls,
         photo_urls: photoUrls,
         status: "pending",
       });
@@ -108,7 +94,6 @@ export default function ClaimPage() {
       setError(msg);
     } finally {
       setLoading(false);
-      setUploadProgress("");
     }
   }
 
@@ -197,7 +182,7 @@ export default function ClaimPage() {
           />
         </div>
 
-        {/* File uploads */}
+        {/* Documents upload */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Документы <span className="text-red-500">*</span>
@@ -206,13 +191,24 @@ export default function ClaimPage() {
             Учредительные документы, лицензия, доверенность. PDF или изображение, макс. 5 файлов, до 10 МБ каждый.
           </p>
           <input
-            ref={docsRef}
             type="file"
             multiple
             accept=".pdf,.jpg,.jpeg,.png,.webp"
+            onChange={(e) => setDocuments(Array.from(e.target.files || []))}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary file:font-medium file:cursor-pointer hover:file:bg-primary-100"
           />
+          {documents.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {documents.map((f) => (
+                <div key={f.name} className="text-xs text-slate-600">
+                  {f.name} ({(f.size / 1024).toFixed(0)} KB)
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Photos upload */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Фотографии клиники
@@ -221,17 +217,22 @@ export default function ClaimPage() {
             Фото клиники, вывески, рабочего места. Макс. 5 файлов.
           </p>
           <input
-            ref={photosRef}
             type="file"
             multiple
             accept=".jpg,.jpeg,.png,.webp"
+            onChange={(e) => setPhotos(Array.from(e.target.files || []))}
             className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-medium file:cursor-pointer hover:file:bg-slate-200"
           />
+          {photos.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {photos.map((f) => (
+                <div key={f.name} className="text-xs text-slate-600">
+                  {f.name} ({(f.size / 1024).toFixed(0)} KB)
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {uploadProgress && (
-          <div className="text-sm text-primary">{uploadProgress}</div>
-        )}
 
         <button
           type="submit"

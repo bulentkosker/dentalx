@@ -26,7 +26,10 @@ export default function ClaimPage() {
       if (file.size > MAX_FILE_SIZE) {
         throw new Error(`Файл "${file.name}" превышает 10 МБ`);
       }
-      const path = `${params.city}/${params.clinic}/${Date.now()}_${file.name}`;
+      const safeName = file.name
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .replace(/_+/g, "_");
+      const path = `${params.city}/${params.clinic}/${Date.now()}_${safeName}`;
       const { data, error } = await supabase.storage
         .from("claim-documents")
         .upload(path, file);

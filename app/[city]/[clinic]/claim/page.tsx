@@ -16,29 +16,43 @@ export default function ClaimPage() {
     setError(null);
     setLoading(true);
 
-    // Look up clinic_id by slug + city_slug
-    const { data: clinic } = await supabase
-      .from("clinics")
-      .select("id")
-      .eq("slug", params.clinic)
-      .eq("city_slug", params.city)
-      .maybeSingle();
+    try {
+      // Look up clinic_id by slug + city_slug
+      const { data: clinic, error: lookupError } = await supabase
+        .from("clinics")
+        .select("id")
+        .eq("slug", params.clinic)
+        .eq("city_slug", params.city)
+        .maybeSingle();
 
-    const fd = new FormData(e.currentTarget);
-    const { error: insertError } = await supabase.from("claim_requests").insert({
-      clinic_id: clinic?.id ?? null,
-      user_id: null,
-      contact_name: fd.get("name") as string,
-      contact_phone: (fd.get("phone") as string) || null,
-      contact_email: fd.get("email") as string,
-      status: "pending",
-    });
+      if (lookupError) {
+        console.error("Clinic lookup failed:", lookupError.message);
+      }
 
-    setLoading(false);
-    if (insertError) {
-      setError(insertError.message);
-    } else {
-      setSubmitted(true);
+      const fd = new FormData(e.currentTarget);
+
+      // Only send columns that exist in claim_requests table:
+      // id (auto), clinic_id, user_id, contact_name, contact_phone, contact_email, status, created_at (auto)
+      const { error: insertError } = await supabase.from("claim_requests").insert({
+        clinic_id: clinic?.id ?? null,
+        contact_name: fd.get("name") as string,
+        contact_phone: (fd.get("phone") as string) || null,
+        contact_email: fd.get("email") as string,
+        status: "pending",
+      });
+
+      if (insertError) {
+        console.error("Claim insert failed:", insertError.message);
+        setError(insertError.message);
+      } else {
+        setSubmitted(true);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Неизвестная ошибка";
+      console.error("handleSubmit error:", msg);
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   }
 

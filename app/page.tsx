@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import SearchForm from "@/app/_components/SearchForm";
 
 export const revalidate = 300;
 
@@ -42,22 +43,7 @@ export default async function HomePage() {
             Реальные отзывы, рейтинги и контакты.
           </p>
 
-          <form action="/almaty" className="mt-8 max-w-xl mx-auto">
-            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl shadow-sm p-2">
-              <input
-                type="text"
-                name="q"
-                placeholder="Название клиники, район, услуга..."
-                className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-slate-900 placeholder:text-slate-400"
-              />
-              <button
-                type="submit"
-                className="px-5 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary-700 transition"
-              >
-                Найти
-              </button>
-            </div>
-          </form>
+          <SearchForm />
         </div>
       </section>
 

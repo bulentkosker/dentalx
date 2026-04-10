@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
+import Stars from "@/app/_components/Stars";
 
 export const revalidate = 300;
 
@@ -10,6 +12,24 @@ const CITIES: Record<string, string> = {
 };
 
 type Props = { params: { city: string; clinic: string } };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const cityName = CITIES[params.city];
+  if (!cityName) return {};
+  const { data } = await supabase
+    .from("clinics")
+    .select("name, address, rating")
+    .eq("city_slug", params.city)
+    .eq("slug", params.clinic)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!data) return {};
+  const ratingStr = data.rating ? ` (${Number(data.rating).toFixed(1)})` : "";
+  return {
+    title: `${data.name}${ratingStr} — ${cityName} | DentalX`,
+    description: `${data.name}${data.address ? `, ${data.address}` : ""} — стоматологическая клиника в ${cityName}. Отзывы, рейтинг, контакты на DentalX.`,
+  };
+}
 
 export default async function ClinicPage({ params }: Props) {
   const cityName = CITIES[params.city];
@@ -48,15 +68,8 @@ export default async function ClinicPage({ params }: Props) {
                 </span>
               )}
             </div>
-            <div className="mt-2 flex items-center gap-4 text-slate-600">
-              <div className="flex items-center gap-1">
-                <span className="text-lg font-semibold text-slate-900">
-                  {clinic.rating ? Number(clinic.rating).toFixed(1) : "—"}
-                </span>
-                <span className="text-sm">
-                  ({(clinic.reviews_count ?? 0).toLocaleString("ru-RU")} отзывов)
-                </span>
-              </div>
+            <div className="mt-2">
+              <Stars rating={clinic.rating} reviewsCount={clinic.reviews_count} />
             </div>
           </div>
 
@@ -103,12 +116,12 @@ export default async function ClinicPage({ params }: Props) {
               <p className="mt-1 text-sm text-slate-700">
                 Свяжитесь с нами, чтобы подтвердить право собственности и управлять профилем.
               </p>
-              <a
-                href="mailto:claim@dentalx.kz"
+              <Link
+                href={`/${params.city}/${params.clinic}/claim`}
                 className="mt-3 inline-flex items-center justify-center w-full px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary-700"
               >
-                Связаться с нами
-              </a>
+                Подтвердить право собственности
+              </Link>
             </div>
           )}
 

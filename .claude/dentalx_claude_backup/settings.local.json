@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes create-next-app@14 dentalx --typescript --tailwind --app --src-dir=false --import-alias=\"@/*\" --eslint --use-npm --no-turbo)",
+      "Bash(mv dentalx/.claude /tmp/dentalx_claude_backup)",
+      "Bash(rmdir dentalx:*)",
+      "Bash(npx --yes create-next-app@14 dentalx --typescript --tailwind --app --src-dir=false --import-alias=\"@/*\" --eslint --use-npm)"
+    ]
+  }
+}

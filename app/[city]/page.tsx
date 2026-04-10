@@ -1,8 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
+import Stars from "@/app/_components/Stars";
 
 export const revalidate = 300;
+
+const CITIES_PREPOSITIONAL: Record<string, string> = {
+  almaty: "Алматы",
+  astana: "Астане",
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const cityName = CITIES[params.city];
+  if (!cityName) return {};
+  const { count } = await supabase
+    .from("clinics")
+    .select("*", { count: "exact", head: true })
+    .eq("city_slug", params.city)
+    .eq("is_active", true);
+  const prepositional = CITIES_PREPOSITIONAL[params.city] ?? cityName;
+  return {
+    title: `Стоматологии в ${prepositional} — DentalX`,
+    description: `${(count ?? 0).toLocaleString("ru-RU")} стоматологических клиник в ${prepositional}. Рейтинги, отзывы, контакты — DentalX.`,
+  };
+}
 
 const CITIES: Record<string, string> = {
   almaty: "Алматы",
@@ -13,7 +35,7 @@ const PAGE_SIZE = 20;
 
 type Props = {
   params: { city: string };
-  searchParams: { page?: string; rating?: string; open?: string; q?: string };
+  searchParams: { page?: string; rating?: string; q?: string };
 };
 
 export default async function CityPage({ params, searchParams }: Props) {
@@ -82,16 +104,6 @@ export default async function CityPage({ params, searchParams }: Props) {
           <option value="4.5">4.5+</option>
           <option value="4.8">4.8+</option>
         </select>
-        <label className="inline-flex items-center gap-2 text-sm text-slate-600 px-2">
-          <input
-            type="checkbox"
-            name="open"
-            value="1"
-            defaultChecked={searchParams.open === "1"}
-            className="rounded border-slate-300 text-primary focus:ring-primary"
-          />
-          Открыто сейчас
-        </label>
         <button
           type="submit"
           className="px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary-700"
@@ -138,12 +150,7 @@ export default async function CityPage({ params, searchParams }: Props) {
                 )}
               </div>
               <div className="text-right shrink-0">
-                <div className="text-lg font-semibold text-slate-900">
-                  {c.rating ? c.rating.toFixed(1) : "—"}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {(c.reviews_count ?? 0).toLocaleString("ru-RU")} отзывов
-                </div>
+                <Stars rating={c.rating} reviewsCount={c.reviews_count} />
               </div>
             </div>
           </Link>
@@ -157,7 +164,6 @@ export default async function CityPage({ params, searchParams }: Props) {
             const sp = new URLSearchParams();
             if (q) sp.set("q", q);
             if (minRating) sp.set("rating", String(minRating));
-            if (searchParams.open === "1") sp.set("open", "1");
             if (p > 1) sp.set("page", String(p));
             const href = `/${params.city}${sp.toString() ? "?" + sp.toString() : ""}`;
             const isActive = p === page;

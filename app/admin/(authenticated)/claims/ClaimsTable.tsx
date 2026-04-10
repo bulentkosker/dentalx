@@ -7,7 +7,6 @@ import { approveClaim, rejectClaim, getSignedUrl } from "./actions";
 type Claim = {
   id: string;
   clinic_id: string | null;
-  clinics: { name: string; slug: string; city_slug: string } | null;
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
@@ -23,11 +22,7 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
   async function handleApprove(claim: Claim) {
     setError(null);
     try {
-      await approveClaim(
-        claim.id,
-        claim.clinics?.slug ?? null,
-        claim.clinics?.city_slug ?? null,
-      );
+      await approveClaim(claim.id, claim.clinic_id);
       router.refresh();
     } catch (e) {
       const msg = (e as Error).message;
@@ -69,8 +64,7 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="px-4 py-3 font-medium">Дата</th>
-              <th className="px-4 py-3 font-medium">Клиника</th>
-              <th className="px-4 py-3 font-medium">Город</th>
+              <th className="px-4 py-3 font-medium">Clinic ID</th>
               <th className="px-4 py-3 font-medium">Имя</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Телефон</th>
@@ -84,11 +78,8 @@ export default function ClaimsTable({ claims }: { claims: Claim[] }) {
                 <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
                   {new Date(c.created_at).toLocaleDateString("ru-RU")}
                 </td>
-                <td className="px-4 py-3 text-slate-900 max-w-[200px] truncate">
-                  {c.clinics?.name ?? <span className="text-slate-400">—</span>}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {c.clinics?.city_slug ?? "—"}
+                <td className="px-4 py-3 font-mono text-xs text-slate-600 max-w-[140px] truncate">
+                  {c.clinic_id ?? <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-4 py-3 text-slate-900">{c.contact_name ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact_email ?? "—"}</td>

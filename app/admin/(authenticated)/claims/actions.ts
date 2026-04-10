@@ -5,11 +5,10 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function approveClaim(
   claimId: string,
-  clinicSlug: string | null,
-  citySlug: string | null,
+  clinicId: string | null,
 ) {
   // Update clinic as claimed
-  if (clinicSlug && citySlug) {
+  if (clinicId) {
     const { error: clinicError } = await supabaseAdmin
       .from("clinics")
       .update({
@@ -17,15 +16,14 @@ export async function approveClaim(
         claimed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("slug", clinicSlug)
-      .eq("city_slug", citySlug);
+      .eq("id", clinicId);
 
     if (clinicError) {
       console.error("Failed to update clinic:", clinicError.message);
       throw new Error(`Ошибка обновления клиники: ${clinicError.message}`);
     }
   } else {
-    console.error("approveClaim: clinicSlug or citySlug is null", { claimId, clinicSlug, citySlug });
+    console.error("approveClaim: clinicId is null", { claimId });
   }
 
   // Update claim status
